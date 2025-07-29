@@ -1,0 +1,9 @@
+{
+	"name": "adf-vision-dev-ingestion",
+	"location": "southindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "bf2d89d3-7eba-446e-993a-cd345a03ce78",
+		"tenantId": "f19ce35b-9ff0-4f75-9986-b6d7afc16a59"
+	}
+}

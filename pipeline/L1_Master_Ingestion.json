@@ -1,0 +1,68 @@
+{
+	"name": "L1_Master_Ingestion",
+	"properties": {
+		"activities": [
+			{
+				"name": "set-variable-trigger",
+				"description": "setting for trigger name",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "Trigger_variable",
+					"value": {
+						"value": "@if(equals(pipeline().parameters.Trigger, null), pipeline().TriggerName, pipeline().parameters.Trigger)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Exec Ingest Raw",
+				"description": "We'll call next pipeline",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "set-variable-trigger",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "L2_Raw_ingestion",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"Trigger": {
+							"value": "@pipeline().parameters.Trigger",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Trigger": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"Trigger_variable": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-07-26T11:35:53Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

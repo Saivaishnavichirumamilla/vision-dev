@@ -1,0 +1,297 @@
+{
+	"name": "L5_CSV",
+	"properties": {
+		"activities": [
+			{
+				"name": "get_job_details",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[dbo].[get_job_dtls]",
+						"storedProcedureParameters": {
+							"TriggerName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.Trigger",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable_metadata",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "sp_start_log_entry",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "get_job_details",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[start_log_entry]",
+					"storedProcedureParameters": {
+						"jobid": {
+							"value": {
+								"value": "@activity('get_job_details').output.firstRow.jobid",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"pipeline_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DS_AzureSqlTable_metadata",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Copy_csv",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "sp_start_log_entry",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Set Mapping",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"value": "@json(variables('mapping'))",
+						"type": "Expression"
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_DelimitedText_src",
+						"type": "DatasetReference",
+						"parameters": {
+							"blob_acc_storage_loc": {
+								"value": "@activity('get_job_details').output.firstRow.SourceAccount",
+								"type": "Expression"
+							},
+							"delimiter": {
+								"value": "@activity('get_job_details').output.firstRow.delimter",
+								"type": "Expression"
+							},
+							"file": {
+								"value": "@activity('get_job_details').output.firstRow.Sourcefile",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_Parquet_Raw",
+						"type": "DatasetReference",
+						"parameters": {
+							"adls_storage_acc_loc": {
+								"value": "@activity('get_job_details').output.firstRow.TargetAccount",
+								"type": "Expression"
+							},
+							"directory": {
+								"value": "@activity('get_job_details').output.firstRow.tgt_dir",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "sp_end_sucess_log_entry",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Copy_csv",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[end_log_entry]",
+					"storedProcedureParameters": {
+						"error": {
+							"value": null,
+							"type": "String"
+						},
+						"jobid": {
+							"value": {
+								"value": "@activity('get_job_details').output.firstRow.jobid",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"pipeline_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DS_AzureSqlTable_metadata",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "sp_end_failure_log_entry",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Copy_csv",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[end_log_entry]",
+					"storedProcedureParameters": {
+						"error": {
+							"value": {
+								"value": "@activity('Copy_csv').output.error.message",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"jobid": {
+							"value": {
+								"value": "@activity('get_job_details').output.firstRow.jobid",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"pipeline_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_DS_AzureSqlTable_metadata",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Set Mapping",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "mapping",
+					"value": "{\n  \"type\": \"TabularTranslator\",\n  \"mappings\": [\n    { \"source\": { \"name\": \"index\" }, \"sink\": { \"name\": \"index\" } },\n    { \"source\": { \"name\": \"Order ID\" }, \"sink\": { \"name\": \"OrderID\" } },\n    { \"source\": { \"name\": \"Date\" }, \"sink\": { \"name\": \"Date\" } },\n    { \"source\": { \"name\": \"Status\" }, \"sink\": { \"name\": \"Status\" } },\n    { \"source\": { \"name\": \"Fulfilment\" }, \"sink\": { \"name\": \"Fulfilment\" } },\n    { \"source\": { \"name\": \"Sales Channel \" }, \"sink\": { \"name\": \"SalesChannel\" } },\n    { \"source\": { \"name\": \"ship-service-level\" }, \"sink\": { \"name\": \"ShipServiceLevel\" } },\n    { \"source\": { \"name\": \"Style\" }, \"sink\": { \"name\": \"Style\" } },\n    { \"source\": { \"name\": \"SKU\" }, \"sink\": { \"name\": \"SKU\" } },\n    { \"source\": { \"name\": \"Category\" }, \"sink\": { \"name\": \"Category\" } },\n    { \"source\": { \"name\": \"Size\" }, \"sink\": { \"name\": \"Size\" } },\n    { \"source\": { \"name\": \"ASIN\" }, \"sink\": { \"name\": \"ASIN\" } },\n    { \"source\": { \"name\": \"Courier Status\" }, \"sink\": { \"name\": \"CourierStatus\" } },\n    { \"source\": { \"name\": \"Qty\" }, \"sink\": { \"name\": \"Qty\" } },\n    { \"source\": { \"name\": \"currency\" }, \"sink\": { \"name\": \"Currency\" } },\n    { \"source\": { \"name\": \"Amount\" }, \"sink\": { \"name\": \"Amount\" } },\n    { \"source\": { \"name\": \"ship-city\" }, \"sink\": { \"name\": \"ShipCity\" } },\n    { \"source\": { \"name\": \"ship-state\" }, \"sink\": { \"name\": \"ShipState\" } },\n    { \"source\": { \"name\": \"ship-postal-code\" }, \"sink\": { \"name\": \"ShipPostalCode\" } },\n    { \"source\": { \"name\": \"ship-country\" }, \"sink\": { \"name\": \"ShipCountry\" } },\n    { \"source\": { \"name\": \"promotion-ids\" }, \"sink\": { \"name\": \"PromotionIds\" } },\n    { \"source\": { \"name\": \"B2B\" }, \"sink\": { \"name\": \"B2B\" } },\n    { \"source\": { \"name\": \"fulfilled-by\" }, \"sink\": { \"name\": \"FulfilledBy\" } },\n    { \"source\": { \"name\": \"Unnamed: 22\" }, \"sink\": { \"name\": \"Unnamed_22\" } }\n  ],\n  \"typeConversion\": true,\n  \"typeConversionSettings\": {\n    \"allowDataTruncation\": true,\n    \"treatBooleanAsNumber\": false\n  }\n}\n"
+				}
+			}
+		],
+		"parameters": {
+			"Trigger": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"mapping": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-07-27T12:11:25Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

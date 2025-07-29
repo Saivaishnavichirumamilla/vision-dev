@@ -1,0 +1,16 @@
+{
+	"name": "LS_AzureBlobStorage_src",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"acc_storage_loc": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureBlobStorage",
+		"typeProperties": {
+			"serviceEndpoint": "@{linkedService().acc_storage_loc}"
+		}
+	}
+}

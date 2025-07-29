@@ -1,0 +1,44 @@
+{
+	"name": "DS_Excel_raw",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_AzureBlobStorage_src",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"acc_storage_loc": {
+					"value": "@dataset().blob_storage_src_loc",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"blob_storage_src_loc": {
+				"type": "string"
+			},
+			"file": {
+				"type": "string"
+			},
+			"sheetname": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Excel",
+		"typeProperties": {
+			"sheetName": {
+				"value": "@dataset().sheetname",
+				"type": "Expression"
+			},
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": {
+					"value": "@dataset().file",
+					"type": "Expression"
+				},
+				"container": "source-data"
+			}
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

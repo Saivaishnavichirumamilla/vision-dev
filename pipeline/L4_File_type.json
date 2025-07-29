@@ -1,0 +1,118 @@
+{
+	"name": "L4_File_type",
+	"properties": {
+		"activities": [
+			{
+				"name": "LU_get_L4_type",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select distinct L4_switch_type from dbo.tbl_job a\njoin dbo.tbl_trigger b on a.trigger_id =b.trigger_id\nwhere b.trigger_name = '@{pipeline().parameters.Trigger}'\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable_metadata",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Switch_get_L4_type",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "LU_get_L4_type",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@activity('LU_get_L4_type').output.firstRow.L4_switch_type",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "csv",
+							"activities": [
+								{
+									"name": "Exec_L5_CSV",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "L5_CSV",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"Trigger": {
+												"value": "@pipeline().parameters.Trigger",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "excel",
+							"activities": [
+								{
+									"name": "Exec_L6_Excel",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "L6_Excel",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"Trigger": {
+												"value": "@pipeline().parameters.Trigger",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Trigger": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2025-07-26T06:43:57Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,17 @@
+{
+	"name": "LS_DS_AzureSqlTable_metadata",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"server": "sql-srv-vision-dev.database.windows.net",
+			"database": "sql-db-vision-dev",
+			"encrypt": "mandatory",
+			"trustServerCertificate": false,
+			"authenticationType": "SQL",
+			"userName": "dev-access-admin",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIkRBVEFGQUNUT1JZQEQzQ0Q2RjQ4LUYyQjktNDRGNS04NEU3LTIwRTdBMERFNjM1Ql9kNjA0NWE1My0xMTQzLTRjODctODVjNS1lMjE1NTVlMGNjZGEiDQp9"
+		}
+	}
+}
